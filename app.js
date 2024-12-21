@@ -109,7 +109,7 @@ const MobileNavbar = ({ destinations }) => {
     setIsOpen(false);
   };
   return (
-    <div className="flex text-xl gap-4 w-full bg-[#FEF502] h-16 fixed left-0 right-0 bottom-0 md:hidden justify-between items-center p-4 z-10 ">
+    <div className="flex text-xl gap-4 w-full bg-[#FEF502] h-16 fixed left-0 right-0 bottom-0 md:hidden justify-between items-center p-4 z-40 ">
       <div className="flex justify-absolute w-full">
         <a href="/" className="flex flex-col items-center p-2 mx-1">
           <i class="fa-solid fa-house"></i>
@@ -290,6 +290,66 @@ const Footer = () => {
   );
 };
 
+// Slider Component
+const Slider = () => {
+  const [images, setImages] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("https://web-production-683a.up.railway.app/components/slider/")
+      .then((response) => response.json())
+      .then((data) => {
+        setImages(data);
+        setLoading(false);
+      })
+      .catch((error) => alert(error.message));
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [images.length]);
+  const goToSlide = (index) => {
+    setCurrentIndex(index);
+  };
+  if (loading || images.length === 0) {
+    return (
+      <div>
+        <LoadingScreen />
+      </div>
+    );
+  }
+  return (
+    <div
+      className="flex items-center h-[50vh] md:h-[60vh] justify-center bg-gray-100 relative bg-cover bg-center"
+      style={{
+        backgroundImage: `url(${images[currentIndex].image})`,
+      }}
+    >
+      <div className="absolute inset-0 bg-black opacity-50 z-0"></div>
+      <div className="bg-black opacity-60"></div>
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 items-center justify-center justify between z-10">
+        <div className="text-left text-white p-6 order-2 md:order-1">
+          <h1 className="text-3xl text-center mb-3">
+            {images[currentIndex].title}
+          </h1>
+          <h1 className="text-center ">{images[currentIndex].subTitle}</h1>
+        </div>
+        <div className="ml-6 order-1 md:order-2">
+          <img
+            src={images[currentIndex].image}
+            alt={images[currentIndex].title}
+            className="w-[30vh] h-[30vh] object-cover rounded-lg shadow-lg ml-10 lg:w-[70vh] lg:h-[50vh]"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 //Home Page
 const HomePage = ({ destinations }) => {
   function getRandomNumber() {
@@ -337,6 +397,7 @@ const HomePage = ({ destinations }) => {
   }
   return (
     <div className="">
+      <Slider />
       <h1 className="text-center mt-4 text-3xl">Explore our Packages</h1>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 p-2">
         {destinations.map((destination) => (
