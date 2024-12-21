@@ -1,5 +1,5 @@
 const { useEffect, useState } = React;
-
+const { HashRouter, Routes, Route, useParams, Link } = ReactRouterDOM;
 // Loading screen Component
 const LoadingScreen = () => {
   return (
@@ -27,24 +27,23 @@ const Navbar = ({ destinations }) => {
   return (
     <nav className="h-20 p-4 flex flex-col justify-center items-center flex md:flex-row md:items-start">
       <div className="flex gap-2">
-        <a href="/">
+        <Link to="/">
           <img
             src="https://trekkersofbengaluru.co.in/Static/Images/logo.png"
             className="h-14 w-14"
           />
-        </a>
-        <a href="/">
+        </Link>
+        <Link to="/">
           <h1 className="text-2xl mt-3">Trekkers of Bengaluru</h1>
-        </a>
+        </Link>
       </div>
       <div className="flex gap-8 hidden md:flex ml-auto text-black mt-2">
-        <a
-          href="#"
+        <Link
+          to="/"
           className="px-2 py-2 hover:bg-[#FEF502] hover:rounded-lg transition-all"
-          onClick={toggleHref}
         >
           Home
-        </a>
+        </Link>
         <button
           onClick={toggleDropdown}
           className={`${
@@ -67,29 +66,29 @@ const Navbar = ({ destinations }) => {
               aria-labelledby="options-menu"
             >
               {destinations.map((destination, index) => (
-                <a
-                  href="#"
+                <Link
+                  to={`/destination/${destination.id}`}
                   key={index}
                   className="block px-4 py-2 text-sm hover:bg-[#FEF502]"
                   role="menuitem"
+                  onClick={toggleHref}
                 >
                   {destination.title}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
         )}
-        <a
-          href="#"
+        <Link
+          to="#"
           className="px-2 py-2 hover:bg-[#FEF502] hover:rounded-lg transition-all"
-          onClick={toggleHref}
         >
           About
-        </a>
+        </Link>
         <a
-          href="#"
+          href="https://wa.me/+917044118120?text=Hi%2C%20I%20was%20exploring%20your%20website%20and%20I%20m%20interested%20in%20getting%20some%20information%20about%20a%20destination."
+          target="_blank"
           className="px-2 py-2 hover:bg-[#FEF502] hover:rounded-lg transition-all"
-          onClick={toggleHref}
         >
           Contact
         </a>
@@ -111,10 +110,10 @@ const MobileNavbar = ({ destinations }) => {
   return (
     <div className="flex text-xl gap-4 w-full bg-[#FEF502] h-16 fixed left-0 right-0 bottom-0 md:hidden justify-between items-center p-4 z-40 ">
       <div className="flex justify-absolute w-full">
-        <a href="/" className="flex flex-col items-center p-2 mx-1">
+        <Link to="/" className="flex flex-col items-center p-2 mx-1">
           <i class="fa-solid fa-house"></i>
           <span>Home</span>
-        </a>
+        </Link>
         <button
           className="flex flex-col items-center p-2 mx-2"
           onClick={toggleDestination}
@@ -134,24 +133,24 @@ const MobileNavbar = ({ destinations }) => {
               <h2 className="text-2xl mb-4 text-center">Destinations</h2>
               <ul className="space-y-4">
                 {destinations.map((destination, index) => (
-                  <a
-                    href="#"
+                  <Link
+                    to={`/destination/${destination.id}`}
                     key={index}
                     className="block px-4 py-2 hover:bg-[#FEF502]"
                     role="menuitem"
                     onClick={toggleHref}
                   >
                     {destination.title}
-                  </a>
+                  </Link>
                 ))}
               </ul>
             </div>
           </div>
         )}
-        <a className="flex flex-col items-center p-2 mx-2">
+        <Link className="flex flex-col items-center p-2 mx-2">
           <i class="fa-solid fa-address-card"></i>
           <span>About</span>
-        </a>
+        </Link>
         <a
           className="flex flex-col items-center p-2 mx-2"
           href="https://wa.me/+917044118120?text=Hi%2C%20I%20was%20exploring%20your%20website%20and%20I%20m%20interested%20in%20getting%20some%20information%20about%20a%20destination."
@@ -410,12 +409,12 @@ const HomePage = ({ destinations }) => {
               text={`(${getRandomNumber()})`}
             />
             <h1 className="text-2xl mb-3">{destination.title}</h1>
-            <a
-              href="#"
+            <Link
+              to={`/destination/${destination.id}`}
               className=" w-full h-16 p-2 bg-[#7f7eff] text-white rounded-lg hover:bg-[#FEF502] hover:text-black text-xl"
             >
               view package
-            </a>
+            </Link>
           </div>
         ))}
       </div>
@@ -528,6 +527,37 @@ const HomePage = ({ destinations }) => {
     </div>
   );
 };
+
+// Destination Page
+const DestinationPage = () => {
+  const { id } = useParams();
+  const [destination, setDestination] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetch(`https://web-production-683a.up.railway.app/tours/tour/${id}`)
+      .then((response) => response.json())
+      .then((data) => {
+        setDestination(data);
+        setLoading(false);
+        console.log(data);
+      })
+      .catch((error) => {
+        console.log(error.message);
+        alert(error.message);
+      });
+  }, [id]);
+  if (loading) {
+    return <LoadingScreen />;
+  }
+  if (!destination) {
+    return <div>Sorry, something went wrong, please check back again!!</div>; // If no destination is found, show an error message
+  }
+
+  return (
+    <div>This is from the destination page with ID: {destination.title}</div>
+  );
+};
+
 // Main app
 const App = () => {
   const [destinations, setDestinations] = useState([]);
@@ -552,12 +582,23 @@ const App = () => {
   }
   return (
     <div className="">
-      <Navbar destinations={destinations} />
-      <MobileNavbar destinations={destinations} />
-      <HomePage destinations={destinations} />
-      <Footer />
-
-      <h1>thiis form app</h1>
+      <ReactRouterDOM.HashRouter>
+        <Navbar destinations={destinations} />
+        <MobileNavbar destinations={destinations} />
+        <Route
+          path="/"
+          exact
+          render={(props) => (
+            <HomePage {...props} destinations={destinations} />
+          )}
+        />
+        <Route
+          path="/destination/:id"
+          exact
+          render={(props) => <DestinationPage {...props} />}
+        />
+        <Footer />
+      </ReactRouterDOM.HashRouter>
     </div>
   );
 };
