@@ -108,7 +108,7 @@ const MobileNavbar = ({ destinations }) => {
     setIsOpen(false);
   };
   return (
-    <div className="flex text-xl gap-4 w-full bg-[#FEF502] h-16 fixed left-0 right-0 bottom-0 md:hidden justify-between items-center p-4 z-40 ">
+    <div className="flex text-xl gap-4 w-full bg-[#FEF502] text-black h-16 fixed left-0 right-0 bottom-0 md:hidden justify-between items-center p-4 z-40 ">
       <div className="flex justify-absolute w-full">
         <Link to="/" className="flex flex-col items-center p-2 mx-1">
           <i class="fa-solid fa-house"></i>
@@ -122,7 +122,7 @@ const MobileNavbar = ({ destinations }) => {
           <span>Destinations</span>
         </button>
         {isOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex justify-center items-center overflow-scroll">
+          <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex justify-center items-center overflow-scroll text-black">
             <div className="bg-white p-8 rounded-lg w-11/12 md:w-1/2">
               <button
                 onClick={toggleDestination}
@@ -528,11 +528,143 @@ const HomePage = ({ destinations }) => {
   );
 };
 
+// Place gallery for the destination page
+const PlaceGallery = ({ destination }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const images = [];
+
+  // Extracting all images
+  destination.tour_itinerary.forEach((itinerary) => {
+    itinerary.places.forEach((place) => {
+      images.push(place.image);
+    });
+  });
+
+  // Automatic slider effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prevIndex) =>
+        prevIndex === images.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 3000); // Change slide every 3 seconds
+
+    return () => clearInterval(timer); // Cleanup on unmount
+  }, [images.length]);
+
+  return (
+    <div className="relative">
+      <div className="flex justify-center items-center w-full h-[40vh] md:h-[60vh] bg-gray-100 overflow-hidden">
+        <div
+          className="carousel-inner flex w-full h-full"
+          style={{
+            transform: `translateX(-${currentIndex * 100}%)`,
+            transition: "transform 0.5s ease-in-out",
+          }}
+        >
+          {images.map((image, index) => (
+            <div
+              key={index}
+              className="carousel-item flex-shrink-0 w-full h-full "
+            >
+              <img
+                src={image}
+                alt={`Slide ${index}`}
+                className="w-full h-full object-cover rounded-lg"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Calendar component
+const Calendar = ({ destination }) => {
+  const [upcomingDates, setUpcomingDates] = useState([]);
+  console.log(destination.tour_dates);
+  useEffect(() => {
+    const currentDate = new Date();
+    const upcoming = destination.tour_dates
+      .map((dates) => {
+        const startDate = new Date(dates.start_date);
+        console.log(startDate);
+        if (startDate > currentDate) {
+          return { ...dates, startDate };
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.startDate - b.startDate)
+      .slice(0, 4);
+    setUpcomingDates(upcoming);
+  }, [destination]);
+  console.log(upcomingDates);
+  const calculateDaysDiff = (startDate) => {
+    const currentDate = new Date();
+    const timeDiff = startDate - currentDate;
+    return Math.floor(timeDiff / (1000 * 3600 * 24)); // Convert milliseconds to days
+  };
+  const formatDate = (date) => {
+    const options = { day: "2-digit", month: "short", year: "numeric" };
+    return new Date(date).toLocaleDateString("en-GB", options); // Use 'en-GB' for DD-MMM-YYYY
+  };
+
+  return (
+    <div className="tour-dates border border-[#7f7eff] border-2 rounded-lg p-4 md:h-full mt-4 md:mt-0">
+      <h2 className="text-2xl text-center mb-2 ">Upcoming Tours</h2>
+      <div className="tour-dates-list">
+        {upcomingDates.length > 0 ? (
+          upcomingDates.map((tour) => {
+            const daysDiff = calculateDaysDiff(tour.startDate);
+            const isEarlyBird = daysDiff > 5;
+
+            return (
+              <div
+                key={tour.id}
+                className="tour-date-item p-4 mb-4 border border-[#7f7eff] rounded-lg"
+              >
+                <h3>
+                  {`${formatDate(tour.start_date)} to ${formatDate(
+                    tour.end_date
+                  )}`}
+                </h3>
+                <div className="price-info">
+                  {isEarlyBird ? (
+                    <div>
+                      <span className="early-bird-price text-lg font-bold text-red-500">
+                        ₹{tour.earlyBirdPrice}
+                      </span>
+                      <span className="regular-price text-sm text-gray-500 line-through">
+                        ₹{tour.basePrice}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="regular-price text-lg font-bold">
+                      ₹{tour.basePrice}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <p className="text-center text-gray-500">
+            Hmm.... we don't have any dates right now for this tour
+            <span className="text-xl">&#128532;</span>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Destination Page
 const DestinationPage = () => {
   const { id } = useParams();
   const [destination, setDestination] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [openAccordions, setOpenAccordions] = useState({});
   useEffect(() => {
     fetch(`https://web-production-683a.up.railway.app/tours/tour/${id}`)
       .then((response) => response.json())
@@ -552,9 +684,170 @@ const DestinationPage = () => {
   if (!destination) {
     return <div>Sorry, something went wrong, please check back again!!</div>; // If no destination is found, show an error message
   }
+  function getRandomNumber() {
+    return (Math.random() + 4).toFixed(1);
+  }
+  const toggleAccordion = (day) => {
+    setOpenAccordions((prevState) => ({
+      ...prevState,
+      [day]: !prevState[day], // Toggle the specific accordion
+    }));
+  };
+  const inclusions = destination.tour_info[0].inclusions || [];
+  const exclusions = destination.tour_info[0].exclusions || [];
+  const pickupPoints = destination.tour_info[0].pickup_points || [];
 
   return (
-    <div>This is from the destination page with ID: {destination.title}</div>
+    <div className="p-4">
+      <h1 className="text-4xl mb-3 p-2 rounded-lg text-center md:text-start">
+        {destination.title}
+      </h1>
+      <div className="grid grid-cols-1 md:flex gap-2">
+        <div className="md:w-[70%]">
+          <PlaceGallery destination={destination} />
+          <Rating
+            value={getRandomNumber()}
+            color="#7f7eff"
+            text={`(${getRandomNumber()})`}
+          />
+        </div>
+        <div className="md:w-[30%]">
+          <Calendar destination={destination} />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:flex gap-2 mt-4">
+        <div className="md:w-[70%]">
+          <h1 className="text-3xl">Itinerary</h1>
+          <hr className="border-1 mt-2 border-[#7f7eff]" />
+          <div
+            className="mt-2"
+            dangerouslySetInnerHTML={{ __html: destination.description }}
+          ></div>
+          <div className="accordion-container mt-2">
+            {destination.tour_itinerary.map((dayItinerary) => (
+              <div
+                key={dayItinerary.id}
+                className="accordion-item border border-[#7f7eff] rounded-lg mb-4"
+              >
+                <button
+                  onClick={() => toggleAccordion(dayItinerary.day)}
+                  className="accordion-header w-full p-4 bg-gray-100 rounded-lg font-semibold flex justify-between items-center"
+                >
+                  <span>{`Day ${dayItinerary.day}`}</span>
+                  <i
+                    className={`fa-solid fa-chevron-down right-1 transform transition-transform duration-300 ${
+                      openAccordions[dayItinerary.day] ? "rotate-180" : ""
+                    }`}
+                  ></i>
+                </button>
+                {openAccordions[dayItinerary.day] && (
+                  <div className="accordion-content p-4 bg-white">
+                    {dayItinerary.places.map((place) => (
+                      <div
+                        key={place.id}
+                        className="place-item mb-4 md:flex md:items-center md:gap-4"
+                      >
+                        <img
+                          src={place.image}
+                          alt={place.name}
+                          className="w-full h-48 object-cover rounded-md mb-2 md:w-48 md:h-48"
+                        />
+                        <div>
+                          <h3 className="text-lg font-bold mb-2">
+                            {place.name}
+                          </h3>
+                          <p className="text-gray-700">{place.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-2">
+            <h1 className="text-3xl">Inclusions & Exclusion</h1>
+            <hr className="border-1 mt-2 border-[#7f7eff]" />
+            <p className="mt-4">
+              When you join us on our tours, you can expect an unforgettable
+              adventure filled with cozy accommodations, delicious meals, and
+              expert guides who are ready to sprinkle some humor into your
+              journey! We’ll whisk you away in comfortable transportation to all
+              the exciting activities we’ve planned. However, while we cover a
+              lot of ground, you’ll need to take care of your flights and any
+              personal expenses like those irresistible souvenirs you’ll want to
+              snag along the way. Check the details to know whats included and
+              excluded during the trip.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 mt-4 w-full">
+              <div className="border rounded-lg p-6 h-full">
+                <h2 className="text-xl text-center">Inclusions</h2>
+                {inclusions.length > 0 ? (
+                  inclusions.map((inclusion) => (
+                    <div
+                      key={inclusion.id}
+                      className="flex items-center gap-2 mt-4 mb-2"
+                    >
+                      <span
+                        className="text-xl text-green-600"
+                        dangerouslySetInnerHTML={{ __html: inclusion.icon }}
+                      ></span>
+                      <span className="text-lg">{inclusion.name}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div>No inclusions available</div>
+                )}
+              </div>
+              <div className="border rounded-lg p-6 mt-2 md:mt-0 md:ml-2 h-full">
+                <h2 className="text-xl text-center">Exclusions</h2>
+                {exclusions.length > 0 ? (
+                  exclusions.map((exclusion) => (
+                    <div
+                      key={exclusion.id}
+                      className="flex items-center gap-2 mt-4 mb-2"
+                    >
+                      <span
+                        className="text-xl text-red-600"
+                        dangerouslySetInnerHTML={{ __html: exclusion.icon }}
+                      ></span>
+                      <span className="text-lg">{exclusion.name}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div>No exclusions available</div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="mt-2">
+            <h1 className="text-3xl">Pick-up Points</h1>
+            <hr className="border-1 mt-2 border-[#7f7eff]" />
+            <div className="p-6">
+              {pickupPoints.map((point) => (
+                <div key={point.id} className="flex gap-2 mb-2">
+                  <span>
+                    <img
+                      src="static/icons/googleMaps.webp"
+                      className="h-10 w-10"
+                    />
+                  </span>
+                  <a
+                    href={`${point.url}`}
+                    className="text-blue-500 underline text-xl"
+                  >
+                    {point.name}
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="md:w-[30%] md:hidden">
+          <Calendar destination={destination} />
+        </div>
+      </div>
+    </div>
   );
 };
 
